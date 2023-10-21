@@ -89,6 +89,8 @@ map_t * map_ctor (game_t * game)
   self->colors[3][1] = al_map_rgb(38, 19, 19);
   self->color = 0;
 
+  self->apprx_lightness = 4000;
+
   IPRINT("REACHED END OF MAP_CTOR");
   return self; // swistu swistu logika poszla w pizdu
 }

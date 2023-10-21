@@ -96,7 +96,7 @@ void audio_play (audio_t * self, game_t * game, char * name, float x, float y)
     return;
   }
   // is sound muffled or not?
-  ALLEGRO_SAMPLE * sample;
+  ALLEGRO_SAMPLE * sample = NULL;
 
   // if (map_line_of_sight(game->map, game->player->x, game->player->y, x, y))
   //   sample = ptr->normal[get_random_long(0, ptr->normal_count - 1, 1)];

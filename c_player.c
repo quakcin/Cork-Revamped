@@ -130,9 +130,11 @@ void player_bobbing (player_t * self, game_t * game)
   self->yoff += self->dyoff;
 
   if (self->yoff > bobbing_limit)
-    self->dyoff = -1 * bobbing_step;
+    self->dyoff = -1 * bobbing_step * game->engine->delta;
   else if (self->yoff < -1 * bobbing_limit)
-    self->dyoff = bobbing_step;
+    self->dyoff = bobbing_step * game->engine->delta;
+
+  printf("bob delt: %f\n", bobbing_step * game->engine->delta );
 }
 
 
@@ -206,10 +208,10 @@ void player_movement_handler (player_t * self, game_t * game)
 
 
   // handle player bobbing effect
-  if (self->vx != 0 || self->vy != 0)
-  {
-    player_bobbing(self, game);
-  }
+  // if (self->vx != 0 || self->vy != 0)
+  // {
+  //   player_bobbing(self, game);
+  // }
 }
 
 void player_kill (sched_t * sched, void * ptr, int val)

@@ -74,11 +74,11 @@ void draw_sprites (game_t * game) // using globals for optimalization
     
     // if ((spr->txt > MAP_LAMPS_START && spr->txt < MAP_LAMPS_END || spr->txt == 0) == false)
     // {
-    //   s = (1 << 12) / (long) spr->z << 4;
-    //   if (s < 0)
-    //     s = 0;
-    //   else if (s > 255)
-    //     s = 255;
+      s = (1 << 12) / (long) spr->z << 4;
+      if (s < 0)
+        s = 0;
+      else if (s > 255)
+        s = 255;
     // }
 
     /*
@@ -158,12 +158,10 @@ void draw_light (game_t * game)
   {
     int light = LIGHTBUFFER[x] * game->map->apprx_lightness / 512;
 
-    // int light = 255 - (int) ((float) ZBUFFER[x] * 0.15f);
-
-    if (light < 0)
-      light = 0;
-    else if (light > 230)
-      light = 230;
+    if (light < 80)
+      light = 80;
+    else if (light > 200)
+      light = 200;
 
     al_draw_line(x, 0, x, game->engine->buffer_height, al_premul_rgba(0, 0, 0, light), 1);
   }
@@ -325,18 +323,11 @@ void p_render_update (proc_t * self)
   draw_sprites(game); // shift stack org, so compiler doesn't complain anymore.
   // draw_overlay(game);
 
-  // if (engine->use_captions)
-  //   draw_captions(self->mem, engine);
-
-  // draw effects
-
   if (game->map->darkness > 0)
   {
     al_draw_filled_rectangle(0, 0, game->engine->buffer_width, game->engine->buffer_height, al_map_rgba(0, 0, 0, game->map->darkness));
     game->map->darkness -= 3;
   }
-
-  // swap buffers
 
   al_set_target_backbuffer(engine->display);
   al_draw_scaled_bitmap(engine->buffer, 0, 0, game->engine->buffer_width, game->engine->buffer_height, 0, 0, engine->width, engine->height, 0);
