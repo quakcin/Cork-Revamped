@@ -47,7 +47,6 @@ void audio_dtor (audio_t * self)
     for (i = 0; i < ptr->normal_count; i++)
       al_destroy_sample(ptr->normal[i]);
 
-    for (i = 0; i < ptr->muffled_count; i++)
       al_destroy_sample(ptr->muffled[i]);
 
     __UNGUARD(ptr, "audio_t node");
@@ -99,10 +98,10 @@ void audio_play (audio_t * self, game_t * game, char * name, float x, float y)
   // is sound muffled or not?
   ALLEGRO_SAMPLE * sample;
 
-  if (map_line_of_sight(game->map, game->player->x, game->player->y, x, y))
-    sample = ptr->normal[get_random_long(0, ptr->normal_count - 1, 1)];
-  else
-    sample = ptr->muffled[get_random_long(0, ptr->muffled_count - 1, 1)];
+  // if (map_line_of_sight(game->map, game->player->x, game->player->y, x, y))
+  //   sample = ptr->normal[get_random_long(0, ptr->normal_count - 1, 1)];
+  // else
+  //   sample = ptr->muffled[get_random_long(0, ptr->muffled_count - 1, 1)];
 
   if (sample == NULL)
     IERROR("[AUDIO] Encounterd NULL sample");

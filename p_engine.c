@@ -30,6 +30,11 @@ void p_engine_init (proc_t * self)
 
   eng->width = 1280;
   eng->height = 720;
+  // retro is better :v
+
+  // eng->width = 640;
+  // eng->height = 360;
+  
   eng->buffer_width = eng->width;
   eng->buffer_height = eng->height;
   eng->pm = self->pm;

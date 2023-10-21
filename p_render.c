@@ -7,33 +7,13 @@
 #include "p_engine.h"
 #include "p_game.h"
 #include "c_player.h"
-#include "c_enemy.h"
 #include "c_map.h"
 
 #include "main.h"
 #include "i_math.h"
 
-// #define GAMMA 30
-// #define GAMMA 90
-// #define GAMMA 120
-
-void p_render_cap_init (render_t * self, engine_t * eng)
-{
-  if (self->font != NULL)
-    al_destroy_font(self->font);
-
-  self->font = al_load_ttf_font("./DATA/cap.ttf", eng->buffer_height / 25, ALLEGRO_TTF_NO_KERNING);
-  self->cap_height = eng->buffer_height;
-}
-
 void p_render_init (proc_t * proc)
 {
-  engine_t * eng = (engine_t *) proc->pm->proc_list->mem;
-  render_t * self = (render_t *) malloc(sizeof(struct render_s));
-  proc->mem = (void *) self;
-  self->cap_timer = 0;
-  self->font = NULL;
-  p_render_cap_init(self, eng);
 }
 
 static void intersect (float * ix, float * iy, float ra, float rb, float rc, float wa, float wb, float wc)
@@ -43,7 +23,6 @@ static void intersect (float * ix, float * iy, float ra, float rb, float rc, flo
 }
 
 // keep this in fast memory
-
 static long ZBUFFER [ZBUFFER_SIZE];
 static int LIGHTBUFFER [ZBUFFER_SIZE];
 static sprite_t SPRITES [SPRITE_BUFFER_SIZE];
@@ -75,13 +54,15 @@ void draw_sprites (game_t * game) // using globals for optimalization
   {
     sprite_t * spr = &SPRITES[SPRITE_ADDR[i]];
     const float ang = atan2(spr->y, spr->x) - game->player->ang;
-    const int size = (int) ((view_dist / (cos(ang) * spr->z)) * 360);
+    const int size = (int) ((view_dist / (cos(ang) * spr->z)) * (360 / 4));
     const float x = tan(ang) * view_dist;
     const int x_off = (int)(game->engine->buffer_width / 2 + x - (size / 2));
     const int y_off = (int)(game->engine->buffer_height - size) / 2;
-    const float unit = 256 / (float) size;
+    const float unit = BMW / (float) size;
     const int far = x_off + size > game->engine->buffer_width 
-      ? game->engine->buffer_width - 1 : x_off + size;
+      ? game->engine->buffer_width - 1 
+      : x_off + size;
+
     const int near = x_off < 0 ? 0 : x_off;
     int i;
 
@@ -91,28 +72,18 @@ void draw_sprites (game_t * game) // using globals for optimalization
     if (txt == NULL)
       continue; // weird!
     
-    if ((spr->txt > MAP_LAMPS_START && spr->txt < MAP_LAMPS_END || spr->txt == 0) == false)
-    {
-      s = (1 << 12) / (long) spr->z << 4;
-      if (s < 0)
-        s = 0;
-      else if (s > 255)
-        s = 255;
-    }
-
-    // // draw unless behind wall
-    // for (i = near; i < far; i++)
-    //   if (ZBUFFER[i] < size)
-    //     al_draw_tinted_scaled_bitmap
-    //     (
-    //       txt, al_map_rgb(s, s, s), (i - x_off) * unit, 0, unit, 256,
-    //       i, y_off + game->player->yoff, 1, size, 0
-    //     );
+    // if ((spr->txt > MAP_LAMPS_START && spr->txt < MAP_LAMPS_END || spr->txt == 0) == false)
+    // {
+    //   s = (1 << 12) / (long) spr->z << 4;
+    //   if (s < 0)
+    //     s = 0;
+    //   else if (s > 255)
+    //     s = 255;
+    // }
 
     /*
       Clip from left and right
     */
-   
     if (near > far)
       goto __escape_prop_drawing;
 
@@ -142,13 +113,11 @@ void draw_sprites (game_t * game) // using globals for optimalization
       al_draw_tinted_scaled_bitmap
       (
         txt, al_map_rgb(s, s, s), 
-        (clip_left - x_off) * unit, 0, unit * width, 256,
+        (clip_left - x_off) * unit, 0, unit * width, BMW,
         clip_left, y_off + game->player->yoff, width, size, 0
       );
 
     
-    // restore sprite in map
-    // map[spr->mx][spr->my] = spr->txt;
 __escape_prop_drawing:
     game->map->tiles[spr->mx][spr->my] = spr->txt;
   }
@@ -189,74 +158,14 @@ void draw_light (game_t * game)
   {
     int light = LIGHTBUFFER[x] * game->map->apprx_lightness / 512;
 
+    // int light = 255 - (int) ((float) ZBUFFER[x] * 0.15f);
+
     if (light < 0)
       light = 0;
-    else if (light > 255)
-      light = 255;
+    else if (light > 230)
+      light = 230;
 
     al_draw_line(x, 0, x, game->engine->buffer_height, al_premul_rgba(0, 0, 0, light), 1);
-  }
-}
-
-void calc_lightness (game_t * game)
-{
-  // find lights in spritebuffer
-  game->map->lightness = 512 + 256;
-
-  int i;
-  for (i = 0; i < sprite_count; i++)
-    if (SPRITES[i].txt > MAP_LAMPS_START && SPRITES[i].txt < MAP_LAMPS_END)
-      game->map->lightness = 512 - 32;
-  
-  if (game->map->apprx_lightness < game->map->lightness)
-    game->map->apprx_lightness += 2;
-  else
-    game->map->apprx_lightness -= 3;
-}
-
-void draw_overlay (game_t * game)
-{
-  if (game->player->health > 80)
-    return;
-
-  int idx = 5 - (game->player->health / 16);
-
-  if (game->player->health <= 0)
-    idx = 4;
-  
-  al_draw_scaled_bitmap
-  (
-    game->map->overlays[idx], 
-    0, 0, 
-    1920, 1080, 
-    0, 0, 
-    game->engine->buffer_width, game->engine->buffer_height, 
-    0
-  );
-}
-
-void draw_captions (render_t * self, engine_t * engine)
-{
-  if (self->cap_timer > 0)
-  {
-    if (engine->buffer_height != self->cap_height)
-      p_render_cap_init(self, engine);
-
-    int w = al_get_text_width(self->font, self->captions) + 25;
-    int h = al_get_font_line_height(self->font) + 10;
-    int xoff = (engine->buffer_width - w) >> 1;
-    int yoff = (engine->buffer_height) - ((engine->buffer_height - h) >> 3) - 8;
-    al_draw_filled_rectangle(xoff, yoff, xoff + w, yoff + h, al_map_rgb(0, 0, 0));
-    al_draw_text
-    (
-      self->font, 
-      al_map_rgb(255, 255, 255), 
-      engine->buffer_width >> 1, 
-      engine->buffer_height - (engine->buffer_height >> 3), 
-      ALLEGRO_ALIGN_CENTER, 
-      self->captions
-    );
-    self->cap_timer--;
   }
 }
 
@@ -264,7 +173,6 @@ void draw_captions (render_t * self, engine_t * engine)
   (c) 2022 PśK Algorytm Ślusarczyk-Bandura
       Efektywne trawersowanie przestrzeni polinominalnych.
 */
-
 void p_render_update (proc_t * self)
 {
   game_t * game = (game_t *) (pm_get(self->pm, "game")->mem);
@@ -313,29 +221,26 @@ void p_render_update (proc_t * self)
     const float rc = player_x * fry - player_y * frx;
 
     // find tile offsets with possible intersections
-    const int bmxoff = ((int) rx) & 255 == 0
+    const int bmxoff = ((int) rx) & BMWL == 0
       ? (a > ANGN90 || a < ANG90 ? 1 : -1) : (frx - rx) < 0 ? 0 : 1;
 
-    const int bmyoff = ((int) ry) & 255 == 0
+    const int bmyoff = ((int) ry) & BMWL == 0
       ? (a > ANG0 && a < ANG180 ? 1 : -1) : (fry - ry) < 0 ? 0 : 1;
 
     // begin traversing plane
     for (i = 0; i < 32; i++)
     {
       float vix, viy, hix, hiy;
-      // intersect(&hix, &hiy, ra, rb, rc, -1 * (float) buffer_width, 0, (float) buffer_width * (float) (((int) rx >> 8) + bmxoff) * 256);
-      // intersect(&vix, &viy, ra, rb, rc, 0, (float) buffer_width, -1 * (float) ((((int) ry >> 8) + bmyoff) * buffer_width) * 256);
-      intersect(&hix, &hiy, ra, rb, rc, -1 * (float) buffer_width, 0, (float) buffer_width * (float) ((((int) rx >> 8) + bmxoff) << 8));
-      intersect(&vix, &viy, ra, rb, rc, 0, (float) buffer_width, -1 * (float) (((((int) ry >> 8) + bmyoff) * buffer_width) << 8));
+      intersect(&hix, &hiy, ra, rb, rc, -1 * (float) buffer_width, 0, (float) buffer_width * (float) ((((int) rx >> BMWS) + bmxoff) << BMWS));
+      intersect(&vix, &viy, ra, rb, rc, 0, (float) buffer_width, -1 * (float) (((((int) ry >> BMWS) + bmyoff) * buffer_width) << BMWS));
 
-      const int omx = (int) rx >> 8;
-      const int omy = (int) ry >> 8;
+      const int omx = (int) rx >> BMWS;
+      const int omy = (int) ry >> BMWS;
 
       // nearest one is the correct one
       const float dv = abs((vix - rx) * (viy - ry));
       const float dh = abs((hix - rx) * (hiy - ry));
 
-      // if ((dvx * dvx) + (dvy * dvy) < (dhx * dhx) + (dhy * dhy))
       if (dv < dh)
       {
         rx = vix;
@@ -347,8 +252,8 @@ void p_render_update (proc_t * self)
         ry = hiy;
       }
 
-      int mx = (int) rx >> 8;
-      int my = (int) ry >> 8;
+      int mx = (int) rx >> BMWS;
+      int my = (int) ry >> BMWS;
 
       // unstuck if stuck
 
@@ -357,48 +262,43 @@ void p_render_update (proc_t * self)
         // one more cast
         rx += cos(a);
         ry += sin(a);
-        mx = (int) rx >> 8;
-        my = (int) ry >> 8;
+        mx = (int) rx >> BMWS;
+        my = (int) ry >> BMWS;
       }
 
-      if (mx < 0 || my < 0 || mx > 510 || my > 510)
+      if (mx < 0 || my < 0 || mx > 511 || my > 511)
         continue;
 
       const uint8_t tile = map->tiles[mx][my];
 
-      if (tile > MAP_SPRITES_START)
+      if (tile >= MAP_BEG_PROPS && tile < MAP_END_PROPS)
       {
-        // buffer up sprite
-        // printf("WID: %hhd, \n", tile);
         SPRITES[sprite_count].mx = mx;
         SPRITES[sprite_count].my = my;
-        SPRITES[sprite_count].x = (float)(mx << 8) + 128 - player_x;
-        SPRITES[sprite_count].y = (float)(my << 8) + 128 - player_y;
+        SPRITES[sprite_count].x = (float)(mx << BMWS) + (BMW >> 1) - player_x;
+        SPRITES[sprite_count].y = (float)(my << BMWS) + (BMW >> 1) - player_y;
         SPRITES[sprite_count].z = sqrt(
           SPRITES[sprite_count].x * SPRITES[sprite_count].x +
           SPRITES[sprite_count].y * SPRITES[sprite_count].y 
         );
         SPRITES[sprite_count].txt = map->tiles[mx][my];
         
-        // HACK: Remove momentarly sprite evidence from map heap
-        // and restore as soon as finished drawing
         game->map->tiles[mx][my] = 0;
         sprite_count++;
         
       }
-      else if (tile > MAP_WALL_START)
+      else if (tile >= MAP_BEG_WALL && tile < MAP_END_WALL ) /* walls */
       {
-        // printf("TID: %hhd, \n", tile);
         // calculate texture offset
-        const int mxs = ((int) rx) & 255;
-        const int tx = (mxs == 0 || mxs == 255)
-          ? (((int) ry) & 255)
+        const int mxs = ((int) rx) & BMWL;
+        const int tx = (mxs == 0 || mxs == BMWL)
+          ? (((int) ry) & BMWL)
           : mxs;
 
         // begin drawing
         const int r = q_sqrt((int)(pow(player_x - rx, 2) + pow(player_y - ry, 2)));
         // const int r = q_dist(player_x, player_y, rx, ry);
-        const int h = (buffer_height << 9) / (int) (cos(a - game->player->ang) * r);
+        const int h = (buffer_height << 7) / (int) (cos(a - game->player->ang) * r);
 
         // calculate lightness
         const int s = ((((r << 6) / engine->gamma) << 4) >> 7);
@@ -411,7 +311,7 @@ void p_render_update (proc_t * self)
 
         // draw it and buffer rest  
         const int y_off = (((int) buffer_height - h) >> 1) + player_yoff;
-        al_draw_scaled_bitmap(texture_buffer[tile], tx, 0, 1, 256, x, y_off, 1, h, 0);
+        al_draw_scaled_bitmap(texture_buffer[tile], tx, 0, 1, BMW, x, y_off, 1, h, 0);
         ZBUFFER[x] = h;
         break;
       }
@@ -420,14 +320,13 @@ void p_render_update (proc_t * self)
   }
 
   // draw_enemy(game); TODO: Remove depriciated
-  draw_viz_buffer(game);
-  calc_lightness(game);
+  // draw_viz_buffer(game);
   draw_light(game);
   draw_sprites(game); // shift stack org, so compiler doesn't complain anymore.
-  draw_overlay(game);
+  // draw_overlay(game);
 
-  if (engine->use_captions)
-    draw_captions(self->mem, engine);
+  // if (engine->use_captions)
+  //   draw_captions(self->mem, engine);
 
   // draw effects
 
@@ -445,9 +344,6 @@ void p_render_update (proc_t * self)
 
 void p_render_dtor (proc_t * self)
 {
-  render_t * rend = (render_t *) self->mem;
-  al_destroy_font(rend->font);
-  free(self->mem);
 }
 
 viz_t * viz_ctor (game_t * game)
@@ -469,12 +365,4 @@ void viz_dtor (game_t * game)
     __UNGUARD(ptr, "viz_t obj");
     free(ptr);
   }
-}
-
-void render_use_captions (pm_t * pm, char * msg, long time)
-{
-  engine_t * eng = (engine_t *) pm->proc_list->mem;
-  render_t * render = (render_t *) pm_get(pm, "render")->mem;
-  memcpy(render->captions, msg, strlen(msg) + 1);
-  render->cap_timer = time * 60;
 }

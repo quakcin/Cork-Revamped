@@ -28,5 +28,3 @@ typedef struct game_s
 void p_game_init (proc_t * self);
 void p_game_update (proc_t * self);
 void p_game_dtor (proc_t * self);
-void game_init_audio (game_t * self);
-void p_game_sched_list (game_t * self);

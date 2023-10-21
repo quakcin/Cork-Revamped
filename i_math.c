@@ -70,21 +70,22 @@ bool within_angle (float ang, float test, float limit)
 
 int q_sqrt (int n) // using Newton-Raphson method
 {
-    int a, b;
+  return sqrt(n);
+    // int a, b;
 
-    if (n < 2) 
-      return n;
+    // if (n < 2) 
+    //   return n;
 
-    a = 0x4E7;
+    // a = 0x4E7;
 
-    b = n / a; 
-    a = (a + b) >> 1;
-    b = n / a; 
-    a = (a + b) >> 1;
-    b = n / a; 
-    a = (a + b) >> 1;
-    b = n / a;  // 3 iterations is enaugh
-    a = (a + b) >> 1; // but whatever
+    // b = n / a; 
+    // a = (a + b) >> 1;
+    // b = n / a; 
+    // a = (a + b) >> 1;
+    // b = n / a; 
+    // a = (a + b) >> 1;
+    // b = n / a;  // 3 iterations is enaugh
+    // a = (a + b) >> 1; // but whatever
 
-    return a;
+    // return a;
 }

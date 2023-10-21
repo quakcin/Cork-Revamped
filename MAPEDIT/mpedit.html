@@ -1,0 +1,185 @@
+<html>
+  <head>
+    <style>
+      body, html
+      {
+        padding: 0px;
+        margin: 0px;
+        background-color: black;
+      }
+      .map
+      {
+        width: calc(512 * 32px);
+        height: 100vh;
+      }
+
+      .row
+      {
+        display: flex;
+      }
+
+      .col
+      {
+        display: block;
+        width: 32px;
+        height: 32px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background-size: 100%;
+        background-position: center center;
+      }
+    </style>
+  </head>
+  <body>
+
+    <input type="file" onchange="loadMap(this);"> 
+    <div class="map">
+    </div>
+
+    <script>
+      const MPSIZE = 512;
+
+      /**
+       * Load assets
+       */
+      const rootDir = prompt("Assets dir:");
+      const glb = {sel: 0}
+      document.title = `Sel: ${glb.sel}`;
+
+      /**
+       * Map consists of rows and cols
+       */
+      let ht = "";
+      for (let y = 0; y < MPSIZE; y++)
+      {
+        ht += `<div class="row">`;
+        for (let x = 0; x < MPSIZE; x++)
+        {
+          ht += `<div class="col" data-pos="${x}x${y}" data-sel="0"></div>`;
+        }
+        ht += `</div>`;
+      }
+
+      document.querySelector('.map').insertAdjacentHTML('beforeend', ht);
+
+
+      const getSpecial = (id) =>
+      {
+        if (id == 255)
+          return './start.jpg';
+
+        return null;
+      }
+
+
+      const setElement = function (x, y, sel)
+      {
+        const el = document.querySelector(`.col[data-pos="${x}x${y}"]`);
+          const spec = getSpecial(sel);
+          el.dataset['sel'] = sel;
+
+          const url = spec == null
+            ? `${rootDir}${sel}.png`
+            : spec;
+
+          el.style = `background-image: url(${url});`
+      }
+
+      const els = document.querySelectorAll('.col');
+      for (const el of els)
+        el.onclick = function (e)
+        {
+          // // set to glb.sel
+          // console.log(el);
+
+          // const spec = getSpecial(glb.sel);
+          // el.dataset['sel'] = glb.sel;
+
+          // const url = spec == null
+          //   ? `${rootDir}${glb.sel}.png`
+          //   : spec;
+
+          // el.style = `background-image: url(${url});`
+          setElement(parseInt(el.dataset['pos'].split('x')[0]), parseInt(el.dataset['pos'].split('x')[1]), glb.sel);
+        
+        }
+
+      document.body.onkeydown = function (e)
+      {
+        if (e.key == 'e')
+        {
+          /* change tx */
+          const id = prompt("texture id:");
+          glb.sel = parseInt(id);
+          document.title = `Sel: ${glb.sel}`;
+        }
+
+
+        if (e.key == 'm')
+        {
+          /* save map */
+          var sampleBytes = new Int8Array(512 * 512);
+
+          var saveByteArray = (function () {
+              var a = document.createElement("a");
+              document.body.appendChild(a);
+              a.style = "display: none";
+              return function (data, name) {
+                  var blob = new Blob(data, {type: "octet/stream"}),
+                      url = window.URL.createObjectURL(blob);
+                  a.href = url;
+                  a.download = name;
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+              };
+          }());
+
+          /* serialize array */
+          const els = document.querySelectorAll('.col');
+          for (el of els)
+          {
+            const idx = parseInt(el.dataset['pos'].split('x')[0]) + parseInt(el.dataset['pos'].split('x')[1]) * 512;
+            sampleBytes[idx] = parseInt(el.dataset['sel']);
+          }
+
+          saveByteArray([sampleBytes], 'mapfile.map');
+        }
+
+      }
+
+
+      const loadMap = function (file)
+      {
+          const reader = new FileReader();
+          file = file.files[0];
+
+          reader.onload = function () 
+          {
+            const data = new Uint8Array(reader.result);
+            const els = document.querySelectorAll('.cols');
+            let x = 0;
+            let y = 0;
+
+            for (let i = 0; i < 512 * 512; i++)
+            {
+              if (parseInt(data[i]) != 0)
+                setElement(x, y, parseInt(data[i]));
+
+              x++;
+              if (x >= 512)
+              {
+                console.log('done: ' + y);
+                x = 0;
+                y++;
+              }
+            }
+
+            console.log(data);
+          }
+
+          if (file)
+            reader.readAsArrayBuffer(file);
+      }
+
+    </script>
+  </body>
+</html>
